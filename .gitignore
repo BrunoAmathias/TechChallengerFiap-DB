@@ -3,3 +3,13 @@
 *.tfstate.
 TFs/terraform.tfstate.backup
 TFs/terraform.tfstate
+
+# Segredos locais do Terraform
+TFs/secrets.auto.tfvars
+*.secret.tfvars
+
+# Arquivos locais do Terraform
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+crash.log

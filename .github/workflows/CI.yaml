@@ -2,13 +2,12 @@ name: CD - Deploy Infra Banco (main)
 
 on:
   push:
-    branches:
-      - main
+    branches: [ "Dev", "Homolog", "main" ]
 
 concurrency:
   group: neon-production-deploy
   cancel-in-progress: false
-
+  
 permissions:
   contents: read
 

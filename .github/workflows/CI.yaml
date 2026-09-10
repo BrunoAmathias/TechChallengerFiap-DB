@@ -1,11 +1,13 @@
-name: CI - Validação Terraform (Neon)
+name: CD - Deploy Infra Banco (main)
 
 on:
-  pull_request:
+  push:
     branches:
       - main
-      - Homolog
-      - Dev
+
+concurrency:
+  group: neon-production-deploy
+  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -15,14 +17,15 @@ defaults:
     working-directory: TFs
 
 jobs:
-  validate:
-    name: Validar infraestrutura Terraform
+  apply:
+    name: Aplicar infraestrutura Neon
     runs-on: ubuntu-latest
+    environment: production
     timeout-minutes: 20
 
     env:
-      NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
-      TF_VAR_newrelic_license_key: ${{ secrets.NEW_RELIC_LICENSE_KEY }}
+      TF_VAR_neon_api_key: ${{ secrets.NEON_API_KEY }}
+      TF_VAR_neon_org_id: ${{ secrets.NEON_ORG_ID }}
 
     steps:
       - name: Checkout código
@@ -45,19 +48,19 @@ jobs:
           terraform_version: "1.15.8"
           terraform_wrapper: false
 
-      - name: Validar secrets obrigatórios
+      - name: Validar configurações obrigatórias
         run: |
-          test -n "$NEON_API_KEY" || {
-            echo "NEON_API_KEY não foi configurado"
+          test -n "$TF_VAR_neon_api_key" || {
+            echo "NEON_API_KEY não foi configurada"
             exit 1
           }
 
-          test -n "$TF_VAR_newrelic_license_key" || {
-            echo "NEW_RELIC_LICENSE_KEY não foi configurado"
+          test -n "$TF_VAR_neon_org_id" || {
+            echo "NEON_ORG_ID não foi configurado"
             exit 1
           }
 
-          echo "Secrets obrigatórios encontrados."
+          echo "Configurações obrigatórias encontradas."
 
       - name: Exibir versões
         run: |
@@ -78,13 +81,13 @@ jobs:
 
           if ! aws s3api head-object \
             --bucket fiap-techchallenger \
-            --key eks/terraform.tfstate \
+            --key neon/terraform.tfstate \
             >/dev/null 2>&1; then
-            echo "O arquivo eks/terraform.tfstate não foi encontrado."
+            echo "O state neon/terraform.tfstate não foi encontrado."
             exit 1
           fi
 
-          echo "Bucket e arquivo de state encontrados."
+          echo "Bucket e state da Neon encontrados."
 
       - name: Inicializar Terraform
         run: |
@@ -103,9 +106,15 @@ jobs:
             -no-color \
             -out=tfplan
 
-      - name: Exibir resumo do plano
-        if: always()
+      - name: Exibir plano
         run: |
-          if [ -f tfplan ]; then
-            terraform show -no-color tfplan
-          fi
+          terraform show \
+            -no-color \
+            tfplan
+
+      - name: Aplicar infraestrutura
+        run: |
+          terraform apply \
+            -input=false \
+            -auto-approve \
+            tfplan

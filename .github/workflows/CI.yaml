@@ -1,46 +1,120 @@
-name: CI - Validação Terraform (Neon)
+name: CD - Deploy Infra Banco (main)
 
 on:
-  pull_request:
+  push:
     branches:
       - main
-      - Homolog
-      - Dev
+
+concurrency:
+  group: neon-production-deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
 
 defaults:
   run:
     working-directory: TFs
 
 jobs:
-  validate:
+  apply:
+    name: Aplicar infraestrutura Neon
     runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 20
+
     env:
-      NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+      TF_VAR_neon_api_key: ${{ secrets.NEON_API_KEY }}
+      TF_VAR_neon_org_id: ${{ secrets.NEON_ORG_ID }}
+
     steps:
       - name: Checkout código
-        uses: actions/checkout@v4
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
-      - name: Configurar credenciais AWS (necessário para o backend S3)
-        uses: aws-actions/configure-aws-credentials@v4
+      - name: Configurar credenciais AWS
+        uses: aws-actions/configure-aws-credentials@463133d79af6d001e45482f356e244208e65f0c5 # v6
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
           aws-region: ${{ secrets.AWS_REGION }}
 
+      - name: Validar identidade AWS
+        run: |
+          aws sts get-caller-identity
+
       - name: Configurar Terraform
-        uses: hashicorp/setup-terraform@v3
+        uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4
         with:
           terraform_version: "1.15.8"
+          terraform_wrapper: false
+
+      - name: Validar configurações obrigatórias
+        run: |
+          test -n "$TF_VAR_neon_api_key" || {
+            echo "NEON_API_KEY não foi configurada"
+            exit 1
+          }
+
+          test -n "$TF_VAR_neon_org_id" || {
+            echo "NEON_ORG_ID não foi configurado"
+            exit 1
+          }
+
+          echo "Configurações obrigatórias encontradas."
+
+      - name: Exibir versões
+        run: |
+          terraform version
+          aws --version
 
       - name: Checar formatação
-        run: terraform fmt -check -recursive
+        run: |
+          terraform fmt -check -recursive
+
+      - name: Validar backend S3
+        run: |
+          if ! aws s3api head-bucket \
+            --bucket fiap-techchallenger 2>/dev/null; then
+            echo "O bucket fiap-techchallenger não existe ou não está acessível."
+            exit 1
+          fi
+
+          if ! aws s3api head-object \
+            --bucket fiap-techchallenger \
+            --key neon/terraform.tfstate \
+            >/dev/null 2>&1; then
+            echo "O state neon/terraform.tfstate não foi encontrado."
+            exit 1
+          fi
+
+          echo "Bucket e state da Neon encontrados."
 
       - name: Inicializar Terraform
-        run: terraform init -input=false
+        run: |
+          terraform init \
+            -input=false \
+            -reconfigure
 
       - name: Validar sintaxe
-        run: terraform validate
+        run: |
+          terraform validate
 
-      - name: Gerar plano (sem aplicar)
-        run: terraform plan -input=false -no-color
+      - name: Gerar plano
+        run: |
+          terraform plan \
+            -input=false \
+            -no-color \
+            -out=tfplan
+
+      - name: Exibir plano
+        run: |
+          terraform show \
+            -no-color \
+            tfplan
+
+      - name: Aplicar infraestrutura
+        run: |
+          terraform apply \
+            -input=false \
+            -auto-approve \
+            tfplan

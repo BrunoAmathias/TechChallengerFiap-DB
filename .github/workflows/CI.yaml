@@ -7,31 +7,43 @@ on:
       - Homolog
       - Dev
 
+permissions:
+  contents: read
+
 defaults:
   run:
     working-directory: TFs
 
 jobs:
   validate:
+    name: Validar infraestrutura Terraform
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+
     env:
       NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+
     steps:
       - name: Checkout código
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
-      - name: Configurar credenciais AWS (necessário para o backend S3)
-        uses: aws-actions/configure-aws-credentials@v4
+      - name: Configurar credenciais AWS
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
           aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Configurar Terraform
-        uses: hashicorp/setup-terraform@v3
+        uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: "1.15.8"
+          terraform_wrapper: false
+
+      - name: Exibir versões
+        run: |
+          terraform version
+          aws --version
 
       - name: Checar formatação
         run: terraform fmt -check -recursive
@@ -42,5 +54,16 @@ jobs:
       - name: Validar sintaxe
         run: terraform validate
 
-      - name: Gerar plano (sem aplicar)
-        run: terraform plan -input=false -no-color
+      - name: Gerar plano
+        run: |
+          terraform plan \
+            -input=false \
+            -no-color \
+            -out=tfplan
+
+      - name: Exibir resumo do plano
+        if: always()
+        run: |
+          if [ -f tfplan ]; then
+            terraform show -no-color tfplan
+          fi

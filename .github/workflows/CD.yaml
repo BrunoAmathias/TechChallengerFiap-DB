@@ -5,6 +5,8 @@ on:
     branches:
       - main
 
+  workflow_dispatch:
+
 concurrency:
   group: neon-production-deploy
   cancel-in-progress: false
@@ -61,11 +63,6 @@ jobs:
           }
 
           echo "Configurações obrigatórias encontradas."
-
-      - name: Exibir versões
-        run: |
-          terraform version
-          aws --version
 
       - name: Checar formatação
         run: |

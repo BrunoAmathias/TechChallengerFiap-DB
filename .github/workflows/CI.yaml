@@ -1,13 +1,24 @@
-name: CD - Deploy Infra Banco (main)
+name: CI - Validação Terraform (Neon)
 
 on:
   push:
-    branches: [ "Dev", "Homolog", "main" ]
+    branches:
+      - Dev
+      - Homolog
+      - main
+
+  pull_request:
+    branches:
+      - Dev
+      - Homolog
+      - main
+
+  workflow_dispatch:
 
 concurrency:
-  group: neon-production-deploy
-  cancel-in-progress: false
-  
+  group: neon-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
@@ -16,10 +27,9 @@ defaults:
     working-directory: TFs
 
 jobs:
-  apply:
-    name: Aplicar infraestrutura Neon
+  validate:
+    name: Validar infraestrutura Terraform
     runs-on: ubuntu-latest
-    environment: production
     timeout-minutes: 20
 
     env:
@@ -105,15 +115,13 @@ jobs:
             -no-color \
             -out=tfplan
 
-      - name: Exibir plano
+      - name: Exibir resumo do plano
+        if: always()
         run: |
-          terraform show \
-            -no-color \
-            tfplan
-
-      - name: Aplicar infraestrutura
-        run: |
-          terraform apply \
-            -input=false \
-            -auto-approve \
-            tfplan
+          if [ -f tfplan ]; then
+            terraform show \
+              -no-color \
+              tfplan
+          else
+            echo "O arquivo tfplan não foi gerado."
+          fi

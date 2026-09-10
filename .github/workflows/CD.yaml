@@ -50,7 +50,7 @@ jobs:
 
       - name: Validar configurações obrigatórias
         run: |
-          test -n "$NEON_API_KEY" || {
+          test -n "$TF_VAR_neon_api_key" || {
             echo "NEON_API_KEY não foi configurada"
             exit 1
           }
@@ -61,6 +61,11 @@ jobs:
           }
 
           echo "Configurações obrigatórias encontradas."
+
+      - name: Exibir versões
+        run: |
+          terraform version
+          aws --version
 
       - name: Checar formatação
         run: |

@@ -1,11 +1,13 @@
-name: CI - Validação Terraform (Neon)
+name: CD - Deploy Infra Banco (main)
 
 on:
-  pull_request:
+  push:
     branches:
       - main
-      - Homolog
-      - Dev
+
+concurrency:
+  group: neon-production-deploy
+  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -15,9 +17,10 @@ defaults:
     working-directory: TFs
 
 jobs:
-  validate:
-    name: Validar infraestrutura Terraform
+  apply:
+    name: Aplicar infraestrutura Neon
     runs-on: ubuntu-latest
+    environment: production
     timeout-minutes: 20
 
     env:
@@ -47,7 +50,7 @@ jobs:
 
       - name: Validar configurações obrigatórias
         run: |
-          test -n "$NEON_API_KEY" || {
+          test -n "$TF_VAR_neon_api_key" || {
             echo "NEON_API_KEY não foi configurada"
             exit 1
           }
@@ -103,9 +106,15 @@ jobs:
             -no-color \
             -out=tfplan
 
-      - name: Exibir resumo do plano
-        if: always()
+      - name: Exibir plano
         run: |
-          if [ -f tfplan ]; then
-            terraform show -no-color tfplan
-          fi
+          terraform show \
+            -no-color \
+            tfplan
+
+      - name: Aplicar infraestrutura
+        run: |
+          terraform apply \
+            -input=false \
+            -auto-approve \
+            tfplan

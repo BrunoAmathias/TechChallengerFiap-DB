@@ -6,9 +6,9 @@ terraform {
   }
 
   backend "s3" {
-    bucket = "techchallenge-dev-tfstate"
+    bucket = "fiap-techchallenger"
     key    = "neon/terraform.tfstate"
-    region = "us-east-1"
+    region = "us-east-2"
   }
 }
 

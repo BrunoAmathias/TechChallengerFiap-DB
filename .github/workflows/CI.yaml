@@ -21,7 +21,7 @@ jobs:
     timeout-minutes: 20
 
     env:
-      NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+      TF_VAR_neon_api_key: ${{ secrets.NEON_API_KEY }}
       TF_VAR_neon_org_id: ${{ secrets.NEON_ORG_ID }}
 
     steps:

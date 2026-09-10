@@ -6,12 +6,14 @@ terraform {
   }
 
   backend "s3" {
-    bucket = "fiap-techchallenger"
-    key    = "neon/terraform.tfstate"
-    region = "us-east-2"
+    bucket       = "fiap-techchallenger"
+    key          = "neon/terraform.tfstate"
+    region       = "us-east-2"
+    encrypt      = true
+    use_lockfile = true
   }
 }
 
 provider "neon" {
-  # A API key vem da variável de ambiente NEON_API_KEY (não escrever aqui)
+  api_key = var.neon_api_key
 }

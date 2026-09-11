@@ -1,178 +1,97 @@
 # TechChallengerFiap-DB
 
-Repositório responsável pela infraestrutura de banco de dados do projeto TechChallengerFiap, com provisionamento de projeto PostgreSQL em Neon mediante Terraform. O projeto modela a base de dados de forma declarativa e mantém o estado de infraestrutura em backend remoto S3.
+## PropÃ³sito
 
-## Apresentação do projeto
+Este repositÃ³rio Ã© responsÃ¡vel pela provisionamento da infraestrutura de banco de dados do projeto TechChallengerFiap. Ele define, por meio de Terraform, a criaÃ§Ã£o de um projeto PostgreSQL gerenciado pela plataforma Neon e organiza o estado remoto em backend S3.
 
-Este repositório oferece o provisionamento da base de dados do sistema de oficina mecânica. A infraestrutura é descrita em Terraform e utiliza o provider `neon` configurado para criar e gerenciar um projeto `neon_project` denominado `Techchallenger - Base`.
+## Tecnologias utilizadas
 
-O repositório possui dois pontos de observação principais:
+- Terraform
+- Provider Neon (`kislerdm/neon`)
+- PostgreSQL gerenciado pelo Neon
+- AWS S3 para armazenamento do state do Terraform
+- Neon DB serverless
 
-1. `TFs/provider.tf`: define o provider Neon e o backend S3 `techchallenge-dev-tfstate`.
-2. `TFs/resources.tf`: cria o projeto Neon chamado `Techchallenger - Base` com retenção de histórico de 21600 segundos.
+## Arquitetura especÃ­fica do repositÃ³rio
 
-## Funcionalidades
-
-- Provisionamento de projeto Neon para a aplicação.
-- Criação de projeto de banco de dados com nome `Techchallenger - Base`.
-- Persistência do estado Terraform em backend S3.
-- Configuração do provider `neon` por chave de API via variável de ambiente `NEON_API_KEY`.
-- Base para permitir uso de um banco PostgreSQL com infraestrutura gerenciada.
-
-## Tecnologias
-
-| Tecnologia | Versão / Uso |
-|---|---|
-| Terraform | `>= [PREENCHER]` |
-| Provider Neon | `kislerdm/neon` |
-| PostgreSQL | Banco gerenciado por Neon |
-| AWS S3 | Backend remoto do Terraform |
-| Neon | Plataforma de banco de dados serverless |
-
-## Arquitetura
-
-A arquitetura de infraestrutura é pequena e objetiva:
-
-```text
-Terraform -> Provider Neon -> neon_project "Techchallenger - Base" -> PostgreSQL em Neon
+```mermaid
+flowchart LR
+    TF[Terraform] --> PN[Provider Neon]
+    PN --> NP[neon_project<br/>Techchallenger - Base]
+    NP --> PG[(PostgreSQL em Neon)]
+    TF --> S3[(Backend remoto S3)]
 ```
 
-A infra é organizada em:
+A infraestrutura deste repositÃ³rio nÃ£o expÃµe endpoints HTTP diretamente. O papel principal Ã© provisionar a base de dados que serÃ¡ consumida pela API principal do projeto.
 
-- `provider.tf`: provider e configuração do backend S3.
-- `resources.tf`: criação do projeto Neon.
-- `imports.tf`: arquivo preparado para importações futuras, atualmente vazio.
+## Passos para execuÃ§Ã£o e deploy
 
-## Estrutura de pastas
-
-```text
-TechChallengerFiap-DB/
-+-- TFs/
-¦   +-- imports.tf
-¦   +-- provider.tf
-¦   +-- resources.tf
-¦   +-- terraform.tfstate
-¦   +-- terraform.tfstate.backup
-+-- README.md
-```
-
-## Instalação
-
-Pré-requisitos:
+### PrÃ©-requisitos
 
 - Terraform instalado
-- Conta Neon com acesso válido
-- Credenciais da AWS para o backend S3
-- Variável de ambiente `NEON_API_KEY` configurada
+- Conta Neon ativa
+- Credenciais AWS para o backend S3
+- VariÃ¡vel de ambiente `NEON_API_KEY` configurada
 
-Clone o repositório:
+### ExecuÃ§Ã£o local
 
 ```bash
-git clone [PREENCHER]
 cd TechChallengerFiap-DB/TFs
-```
-
-Inicialize o Terraform:
-
-```bash
-terraform init
-```
-
-## Configuração das variáveis de ambiente
-
-O provider do Neon depende da variável de ambiente:
-
-```bash
-export NEON_API_KEY="[PREENCHER]"
-```
-
-O código do provider informa que a API key vem da variável de ambiente `NEON_API_KEY`, e não deve ser escrita diretamente no arquivo.
-
-## Execução local
-
-Para aplicar o provisionamento localmente:
-
-```bash
-cd TFs
+export NEON_API_KEY="sua-chave"
 terraform init
 terraform plan
 terraform apply
 ```
 
-O backend do Terraform aponta para o bucket:
-
-```hcl
-backend "s3" {
-  bucket = "techchallenge-dev-tfstate"
-  key    = "neon/terraform.tfstate"
-  region = "us-east-1"
-}
-```
-
-## Banco de dados
-
-O banco de dados é provisionado no Neon como um projeto denominado `Techchallenger - Base`. O repositório não descreve o schema completo em Terraform; o schema de aplicação e os scripts SQL de inicialização estão no repositório `TechChallengerFiap-Application` na pasta `backEnd/db/init`.
-
-Os scripts de inicialização são:
-
-```text
-01_clientes.sql
-02_veiculos.sql
-03_servicos.sql
-04_pecas.sql
-05_ordens_servico.sql
-06_os_servicos.sql
-07_os_pecas.sql
-```
-
-Estes arquivos criam as tabelas `clientes`, `veiculos`, `servicos`, `pecas`, `ordens_servico`, `os_servicos` e `os_pecas`.
-
-## Testes
-
-Este repositório não apresenta suíte automatizada de teste para infraestrutura. O fluxo mais adequado é a validação do Terraform:
+### ValidaÃ§Ã£o
 
 ```bash
 terraform validate
 terraform plan
 ```
 
-## Exemplos de uso
+### Estrutura do projeto
 
-### Exemplo de criação do projeto Neon
-
-```hcl
-resource "neon_project" "main" {
-  name                      = "Techchallenger - Base"
-  history_retention_seconds = 21600
-}
+```text
+TechChallengerFiap-DB/
+â”œâ”€â”€ TFs/
+â”‚   â”œâ”€â”€ imports.tf
+â”‚   â”œâ”€â”€ provider.tf
+â”‚   â”œâ”€â”€ resources.tf
+â”‚   â”œâ”€â”€ variables.tf
+â”‚   â”œâ”€â”€ terraform.tfstate
+â”‚   â””â”€â”€ terraform.tfstate.backup
+â”œâ”€â”€ README.md
+â””â”€â”€ ...
 ```
 
-### Exemplo de execução
+## Como o banco Ã© usado pelo sistema
 
-```bash
-export NEON_API_KEY="[PREENCHER]"
-cd TFs
-terraform init
-terraform apply
+Os scripts SQL de criaÃ§Ã£o da estrutura ficam no repositÃ³rio da aplicaÃ§Ã£o:
+
+```text
+TechChallengerFiap-Application/backEnd/db/init/
+â”œâ”€â”€ 01_clientes.sql
+â”œâ”€â”€ 02_veiculos.sql
+â”œâ”€â”€ 03_servicos.sql
+â”œâ”€â”€ 04_pecas.sql
+â”œâ”€â”€ 05_ordens_servico.sql
+â”œâ”€â”€ 06_os_servicos.sql
+â””â”€â”€ 07_os_pecas.sql
 ```
 
-## Deploy
+Esses scripts criam as tabelas de clientes, veÃ­culos, serviÃ§os, peÃ§as e ordens de serviÃ§o que a API utiliza.
 
-O deploy é realizado pelo Terraform por meio do provider Neon e do backend S3. O corpo principal do deploy é a criação do projeto `Techchallenger - Base`.
+## Link para Swagger / Postman
 
-```bash
-cd TFs
-terraform apply
-```
+Este repositÃ³rio nÃ£o expÃµe documentaÃ§Ã£o de API por si sÃ³, porque ele Ã© apenas infraestrutura de banco. A documentaÃ§Ã£o funcional da API estÃ¡ no repositÃ³rio da aplicaÃ§Ã£o:
 
-## Contribuição
+- Swagger da API principal: http://localhost:3000/api-docs
 
-Contribuições são bem-vindas por meio de branchs, commits e pull requests. Recomendamos:
+## ObservaÃ§Ãµes operacionais
 
-- manter o provider Neon e o backend S3 compatíveis;
-- usar a variável de ambiente `NEON_API_KEY` em vez de gravar a chave no código;
-- validar o plano com `terraform plan` antes do provisionamento.
+- O estado do Terraform Ã© persistido em backend S3.
+- A criaÃ§Ã£o do projeto Neon deve ser feita com cuidado para nÃ£o afetar o ambiente de produÃ§Ã£o sem revisÃ£o do plano.
+- O valor da chave de API nunca deve ser commitado diretamente no repositÃ³rio.
 
-## Licença
-
-[PREENCHER]
+---

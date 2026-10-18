@@ -28,6 +28,9 @@ jobs:
     env:
       TF_VAR_neon_api_key: ${{ secrets.NEON_API_KEY }}
       TF_VAR_neon_org_id: ${{ secrets.NEON_ORG_ID }}
+      TF_VAR_atlas_org_id: ${{ secrets.ATLAS_ORG_ID }}
+      MONGODB_ATLAS_PUBLIC_KEY: ${{ secrets.MONGODB_ATLAS_PUBLIC_KEY }}
+      MONGODB_ATLAS_PRIVATE_KEY: ${{ secrets.MONGODB_ATLAS_PRIVATE_KEY }}
 
     steps:
       - name: Checkout código
@@ -61,6 +64,13 @@ jobs:
             echo "NEON_ORG_ID não foi configurado"
             exit 1
           }
+
+          for VAR in TF_VAR_atlas_org_id MONGODB_ATLAS_PUBLIC_KEY MONGODB_ATLAS_PRIVATE_KEY; do
+            test -n "${!VAR}" || {
+              echo "$VAR não foi configurado"
+              exit 1
+            }
+          done
 
           echo "Configurações obrigatórias encontradas."
 

@@ -2,10 +2,11 @@ name: CI - Validação Terraform (Neon)
 
 on:
   push:
+    # main fica de fora: lá o CD já gera o plano antes do apply. Rodar os dois
+    # juntos disputava a trava do estado no S3 (Error acquiring the state lock).
     branches:
       - Dev
       - Homolog
-      - main
 
   pull_request:
     branches:
